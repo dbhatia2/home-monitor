@@ -1,0 +1,55 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: home_db
+    restart: unless-stopped
+    ports:
+      - "3310:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: home_monitor
+      MYSQL_USER: monitor
+      MYSQL_PASSWORD: monitor123
+    volumes:
+      - ./db/data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  scraper:
+    build: .
+    container_name: home_scraper
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_WRITE: "true"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+
+  backup:
+    image: mysql:8.0
+    container_name: home_backup
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    entrypoint: >
+      bash -c "
+        while true; do
+          STAMP=$$(date +%Y%m%d_%H%M%S);
+          mysqldump -h mysql -u monitor -pmonitor123 --no-tablespaces home_monitor > /backups/home_$$STAMP.sql;
+          find /backups -name '*.sql' -mtime +7 -delete;
+          sleep 86400;
+        done
+      "
+    volumes:
+      - ./db/backups:/backups

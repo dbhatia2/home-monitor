@@ -1,0 +1,27 @@
+{
+    "name": "Deepesh",
+    "email": "deepeshbhatia21@gmail.com",
+    "search": {
+        "cities": ["Tracy", "Mountain House", "Dublin"],
+        "min_beds": 4,
+        "min_baths": 2,
+        "max_price": 1100000,
+        "min_sqft": 1800
+    },
+    "neighborhoods": {
+        "preferred": ["Tracy Hills", "Lakeshore", "Creekside", "Boulevard"]
+    },
+    "builders": {
+        "preferred": ["Lennar", "KB Home", "Taylor Morrison"]
+    },
+    "alerts": {
+        "frequency": "daily"
+    },
+    "scoring_weights": {
+        "value_ppsf": 40,
+        "price_drop": 30,
+        "availability": 20,
+        "sqft_bonus": 5,
+        "hotw": 5
+    }
+}

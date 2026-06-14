@@ -1,0 +1,25 @@
+{
+    "name": "Preeti",
+    "email": "preetimehindru9@gmail.com",
+    "search": {
+        "cities": ["Roseville"],
+        "min_beds": 4,
+        "min_baths": 2
+    },
+    "neighborhoods": {
+        "preferred": ["Placer One", "Winding Creek", "Solaire", "West Roseville"]
+    },
+    "builders": {
+        "preferred": ["Taylor Morrison", "KB Home", "Lennar", "JMC Homes"]
+    },
+    "alerts": {
+        "frequency": "daily"
+    },
+    "scoring_weights": {
+        "value_ppsf": 40,
+        "price_drop": 30,
+        "availability": 20,
+        "sqft_bonus": 5,
+        "hotw": 5
+    }
+}
