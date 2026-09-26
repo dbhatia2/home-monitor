@@ -43,13 +43,13 @@ def _upsert_home(cur, home, community_id, ts):
         INSERT INTO homes (community_id,address,home_url,beds,baths,sqft,plan_name,homesite,
             price,was_price,price_per_sqft,status,is_hotw,price_drop,price_drop_amt,
             drop_source,prev_price,new_listing,spotlight_features,first_seen_at,last_seen_at)
-        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        ON DUPLICATE KEY UPDATE home_url=VALUES(home_url),price=VALUES(price),
-            was_price=VALUES(was_price),price_per_sqft=VALUES(price_per_sqft),
-            status=VALUES(status),is_hotw=VALUES(is_hotw),price_drop=VALUES(price_drop),
-            price_drop_amt=VALUES(price_drop_amt),prev_price=VALUES(prev_price),
-            new_listing=VALUES(new_listing),spotlight_features=VALUES(spotlight_features),
-            last_seen_at=VALUES(last_seen_at)
+        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new_home
+        ON DUPLICATE KEY UPDATE home_url=new_home.home_url,price=new_home.price,
+            was_price=new_home.was_price,price_per_sqft=new_home.price_per_sqft,
+            status=new_home.status,is_hotw=new_home.is_hotw,price_drop=new_home.price_drop,
+            price_drop_amt=new_home.price_drop_amt,prev_price=new_home.prev_price,
+            new_listing=new_home.new_listing,spotlight_features=new_home.spotlight_features,
+            last_seen_at=new_home.last_seen_at
     """, (
         community_id, addr,
         (home.get("home_url", "")[:499] or None),
@@ -89,8 +89,8 @@ def _upsert_school(cur, school, city_id):
     if not name:
         return None
     cur.execute("""INSERT INTO schools (name,grades,type,district,rating_gs,rating_niche,url,city_id)
-        VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
-        ON DUPLICATE KEY UPDATE grades=VALUES(grades),rating_gs=VALUES(rating_gs),updated_at=CURRENT_TIMESTAMP""",
+        VALUES(%s,%s,%s,%s,%s,%s,%s,%s) AS new_school
+        ON DUPLICATE KEY UPDATE grades=new_school.grades,rating_gs=new_school.rating_gs,updated_at=CURRENT_TIMESTAMP""",
         (name, str(school.get("grades") or "")[:19], str(school.get("type") or "")[:19],
          str(school.get("district") or "")[:149],
          int(school.get("rating_gs")) if school.get("rating_gs") is not None else None,
@@ -177,7 +177,7 @@ def write_all(homes: list, scraped_at: datetime, stats: dict) -> dict:
                                 sid = _upsert_school(cur, sch, cid)
                                 if sid:
                                     cur.execute("INSERT INTO community_schools (community_id,school_id,distance,approximate) "
-                                                "VALUES(%s,%s,%s,%s) ON DUPLICATE KEY UPDATE distance=VALUES(distance)",
+                                                "VALUES(%s,%s,%s,%s) AS new_cs ON DUPLICATE KEY UPDATE distance=new_cs.distance",
                                                 (community_id, sid, sch.get("distance", ""),
                                                  int(bool(sch.get("approximate")))))
                                     summary["schools_written"] += 1
