@@ -1,15 +1,22 @@
 @import "tailwindcss";
 
-:root {
-  --background: #09090f;
-  --foreground: #f0eeea;
-  --accent: #10B981;
-  --muted: #64748B;
-  --border: rgba(180, 160, 255, 0.08);
+body {
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Ensure dark mode variants work */
+@variant dark (&:where(.dark, .dark *));
+
+/* Slide-in animation for modal */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
 }

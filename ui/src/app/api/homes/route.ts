@@ -16,6 +16,7 @@ const SELECT_HOMES = `
     h.prev_price, h.new_listing, h.drop_source,
     h.spotlight_features, h.builder_meta,
     h.first_seen_at, h.last_seen_at, h.updated_at,
+    h.community_id,
     b.name AS builder, b.color_hex AS builder_color,
     co.name AS community, co.is_55_plus,
     ci.name AS city
@@ -42,6 +43,10 @@ export const GET = withApi(async (req) => {
   if (cities.length) {
     where.push(`ci.name IN (${cities.map(() => "?").join(",")})`);
     params.push(...cities);
+  }
+  if (filters.address) {
+    where.push("h.address LIKE ?");
+    params.push(`%${filters.address}%`);
   }
   if (filters.builders?.length) {
     where.push(`b.name IN (${filters.builders.map(() => "?").join(",")})`);

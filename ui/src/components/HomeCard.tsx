@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTabContext } from "@/contexts/TabContext";
 import type { Home } from "@/lib/types";
+import SoldHomesModal from "./SoldHomesModal";
 
 const STATUS_COLORS: Record<string, string> = {
   MOVE_IN_READY: "#10B981",
@@ -16,6 +17,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function HomeCard({ home, rank }: { home: Home; rank?: number }) {
   const { activeTab, addHomeToGroup, removeHomeFromGroup, isHomeInTab } = useTabContext();
   const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const [showSoldHomesModal, setShowSoldHomesModal] = useState(false);
 
   const ppsf = home.sqft && home.price ? Math.round(home.price / home.sqft) : 0;
   const statusColor = STATUS_COLORS[home.status] || "#64748B";
@@ -155,6 +157,19 @@ export default function HomeCard({ home, rank }: { home: Home; rank?: number }) 
             </p>
           </div>
         )}
+        {home.plan_name && (
+          <div className="mt-2">
+            <button
+              onClick={() => setShowSoldHomesModal(true)}
+              className="w-full py-1.5 px-3 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 bg-slate-800/50 text-slate-400 hover:bg-slate-700 hover:text-slate-300 border border-slate-700/50"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              View Similar Sold Homes
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Add to Group Button */}
@@ -209,6 +224,18 @@ export default function HomeCard({ home, rank }: { home: Home; rank?: number }) 
           </div>
         )}
       </div>
+
+      {/* Sold Homes Modal */}
+      {showSoldHomesModal && home.plan_name && (
+        <SoldHomesModal
+          isOpen={showSoldHomesModal}
+          onClose={() => setShowSoldHomesModal(false)}
+          planName={home.plan_name}
+          communityId={home.community_id}
+          communityName={home.community}
+          currentHomeAddress={home.address}
+        />
+      )}
     </div>
   );
 }

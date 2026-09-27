@@ -38,6 +38,7 @@ export interface Home {
   builder: string;
   builder_color: string | null;
   community: string;
+  community_id: number;
   is_55_plus: number;
   city: string;
   drop_source: string | null;
@@ -94,6 +95,7 @@ export interface ScoringWeights {
 export interface Filters {
   city?: string;
   cities?: string[];
+  address?: string;
   minBeds?: number;
   minBaths?: number;
   minPrice?: number;
@@ -165,4 +167,26 @@ export interface FiltersResponse {
     maxBeds: number;
   };
   statuses: string[];
+}
+
+export interface SoldHome {
+  id: number;
+  address: string;
+  plan_name: string;
+  price: number;
+  last_seen_at: string;
+  updated_at: string;
+  homesite: string | null;
+  beds: number | null;
+  baths: string | null;
+  sqft: number | null;
+  community: string;
+  city: string;
+  state: string;
+}
+
+export interface SoldHomesResponse {
+  plan_name: string;
+  total: number;
+  sold_homes: SoldHome[];
 }
