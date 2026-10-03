@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd ui && npm run build",
+  "outputDirectory": "ui/.next",
+  "framework": "nextjs",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    }
+  ]
+}

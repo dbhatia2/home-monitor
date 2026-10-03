@@ -8,6 +8,8 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || "home_monitor",
   waitForConnections: true,
   connectionLimit: 5,
+  // PlanetScale requires SSL in production
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined,
 });
 
 export default pool;

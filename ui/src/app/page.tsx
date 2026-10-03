@@ -18,12 +18,14 @@ export default function Dashboard() {
   const [cities, setCities] = useState<string[]>([]);
   const [selectedCity, setSelectedCity] = useState("all");
   const [minBeds, setMinBeds] = useState("");
+  const [addressSearch, setAddressSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("price_drop");
   const [loading, setLoading] = useState(true);
 
   // Pending filter state (not yet applied)
   const [pendingCity, setPendingCity] = useState("all");
   const [pendingMinBeds, setPendingMinBeds] = useState("");
+  const [pendingAddressSearch, setPendingAddressSearch] = useState("");
   const [pendingSort, setPendingSort] = useState<SortKey>("price_drop");
 
   const fetchData = useCallback(async () => {
@@ -31,6 +33,7 @@ export default function Dashboard() {
     const params = new URLSearchParams();
     if (selectedCity !== "all") params.set("city", selectedCity);
     if (minBeds) params.set("minBeds", minBeds);
+    if (addressSearch) params.set("address", addressSearch);
     params.set("sort", sort);
     params.set("limit", "50");
 
@@ -44,7 +47,7 @@ export default function Dashboard() {
       console.error("Fetch failed:", e);
     }
     setLoading(false);
-  }, [selectedCity, minBeds, sort]);
+  }, [selectedCity, minBeds, addressSearch, sort]);
 
   useEffect(() => {
     fetchData();
@@ -53,13 +56,18 @@ export default function Dashboard() {
   const applyFilters = () => {
     setSelectedCity(pendingCity);
     setMinBeds(pendingMinBeds);
+    setAddressSearch(pendingAddressSearch);
     setSort(pendingSort);
   };
 
   const hasUnappliedChanges =
     pendingCity !== selectedCity ||
     pendingMinBeds !== minBeds ||
+    pendingAddressSearch !== addressSearch ||
     pendingSort !== sort;
+
+  // Check if any filters are active
+  const hasActiveFilters = selectedCity !== "all" || minBeds !== "" || addressSearch !== "";
 
   const topDrops = homes
     .filter((h) => h.price_drop === 1 && h.price_drop_amt > 0)
@@ -107,6 +115,15 @@ export default function Dashboard() {
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
+
+          {/* Address Search */}
+          <input
+            type="text"
+            value={pendingAddressSearch}
+            onChange={(e) => setPendingAddressSearch(e.target.value)}
+            placeholder="Search by address..."
+            className="bg-white border border-gray-300 text-slate-700 dark:bg-[#0e0e18] dark:border-slate-800 dark:text-slate-300 text-sm rounded-lg px-4 py-2.5 focus:border-emerald-500 focus:outline-none min-w-[200px]"
+          />
 
           {/* Min Beds */}
           <select
@@ -171,8 +188,8 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Top Price Drops */}
-        {topDrops.length > 0 && (
+        {/* Top Price Drops - Only show when no filters are active */}
+        {!hasActiveFilters && topDrops.length > 0 && (
           <section className="mb-10">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
               <span className="text-red-400">&#9660;</span> Top Price Drops
@@ -188,8 +205,8 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Top by Sqft */}
-        {topSqft.length > 0 && (
+        {/* Top by Sqft - Only show when no filters are active */}
+        {!hasActiveFilters && topSqft.length > 0 && (
           <section className="mb-10">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
               <span className="text-blue-400">&#9632;</span> Largest Homes by Sqft
@@ -205,10 +222,10 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* All Homes Grid */}
+        {/* Filtered Results / All Homes Grid */}
         <section className="mb-10">
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">
-            All Listings
+            {hasActiveFilters ? 'Filtered Results' : 'All Listings'}
             <span className="text-xs text-slate-500 dark:text-slate-600 font-normal ml-2">
               {homes.length} homes
             </span>

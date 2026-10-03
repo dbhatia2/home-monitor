@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TabProvider } from "@/contexts/TabContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,9 +9,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-[#09090f] text-[#f0eeea] antialiased">
-        {children}
+    <html lang="en" className="dark">
+      <body className="min-h-screen bg-white text-slate-900 dark:bg-[#09090f] dark:text-[#f0eeea] antialiased">
+        <TabProvider>
+          {children}
+        </TabProvider>
       </body>
     </html>
   );

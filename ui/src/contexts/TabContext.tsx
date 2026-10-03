@@ -3,6 +3,19 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import type { Home } from "@/lib/types";
 
+// Fallback UUID generator for browsers that don't support crypto.randomUUID()
+function generateUUID(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers or Safari iOS
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export interface TabGroup {
   id: string;
   name: string;
@@ -66,11 +79,11 @@ export function TabProvider({ children }: { children: ReactNode }) {
     } else {
       // Create default tab
       const defaultTab: Tab = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         name: "My Homes",
         budget: 800000,
         groups: [{
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           name: "Favorites",
           color: TAB_COLORS[0],
           homeIds: [],
@@ -93,11 +106,11 @@ export function TabProvider({ children }: { children: ReactNode }) {
 
   const createTab = (name: string, budget: number) => {
     const newTab: Tab = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name,
       budget,
       groups: [{
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         name: "Group 1",
         color: TAB_COLORS[0],
         homeIds: [],
@@ -122,7 +135,7 @@ export function TabProvider({ children }: { children: ReactNode }) {
   const createGroup = (name: string, color: string) => {
     if (!activeTab) return;
     const newGroup: TabGroup = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name,
       color,
       homeIds: [],
