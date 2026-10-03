@@ -154,7 +154,7 @@ export const GET = withApi(async (req) => {
   // Fetch stats and cities in parallel
   const [stats, cityResult] = await Promise.all([
     getCachedStats(),
-    pool.query("SELECT name FROM cities WHERE is_active = true ORDER BY name"),
+    pool.query("SELECT name FROM cities WHERE active = true ORDER BY name"),
   ]);
 
   return json({

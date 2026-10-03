@@ -9,7 +9,7 @@ import type { BuilderFacet, CommunityFacet } from "@/lib/types";
  */
 export const GET = withApi(async () => {
   const { rows: cityRows } = await pool.query(
-    "SELECT name FROM cities WHERE is_active = true ORDER BY name",
+    "SELECT name FROM cities WHERE active = true ORDER BY name",
   );
 
   const { rows: builderRows } = await pool.query(`
@@ -17,7 +17,7 @@ export const GET = withApi(async () => {
     FROM builders b
     JOIN communities co ON co.builder_id = b.id
     JOIN homes h ON h.community_id = co.id
-    WHERE b.is_active = true AND h.status NOT IN ('SOLD','FUTURE','MODEL_HOME')
+    WHERE b.active = true AND h.status NOT IN ('SOLD','FUTURE','MODEL_HOME')
     ORDER BY b.name
   `);
 
