@@ -3,8 +3,7 @@ import pool from "@/lib/db";
 import { SoldHomesResponse, SoldHome } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url, `https://${req.headers.get('host') || 'localhost'}`);
-  const { searchParams } = url;
+  const searchParams = req.nextUrl.searchParams;
   const planName = searchParams.get("plan_name");
   const communityId = searchParams.get("community_id");
   const limit = parseInt(searchParams.get("limit") || "20", 10);

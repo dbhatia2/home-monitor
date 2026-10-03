@@ -3,6 +3,7 @@ import { json, preflight, withApi } from "@/lib/cors";
 import { filterHomes, scoreAll, sortHomes } from "@/lib/scoring";
 import { parseFilters } from "@/lib/query";
 import type { CityStats, Home } from "@/lib/types";
+import type { NextRequest } from "next/server";
 
 /**
  * Upper bound on rows pulled from MySQL before scoring, as a safety valve.
@@ -80,8 +81,7 @@ async function getCachedStats(): Promise<CityStats[]> {
 }
 
 export const GET = withApi(async (req) => {
-  const url = new URL(req.url, `https://${req.headers.get('host') || 'localhost'}`);
-  const { searchParams } = url;
+  const searchParams = (req as NextRequest).nextUrl.searchParams;
   const filters = parseFilters(searchParams);
 
   const where: string[] = [
