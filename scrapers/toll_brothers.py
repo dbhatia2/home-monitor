@@ -5,7 +5,10 @@ import json
 import time
 import requests
 from scrapers.base import BaseScraper
-from scrapers.common import BROWSER_HEADERS, POLITE_DELAY, parse_price, normalize_address
+from scrapers.common import (
+    get_browser_headers, get_jittered_delay,
+    parse_price, normalize_address
+)
 
 
 class TollBrothersScraper(BaseScraper):
@@ -20,8 +23,8 @@ class TollBrothersScraper(BaseScraper):
                 continue
             print(f"    Fetching: {comm['name']} ({comm['city']})")
             try:
-                time.sleep(POLITE_DELAY)
-                resp = requests.get(comm["url"], headers=BROWSER_HEADERS, verify=False, timeout=15)
+                time.sleep(get_jittered_delay("Toll Brothers"))
+                resp = requests.get(comm["url"], headers=get_browser_headers(), verify=False, timeout=15)
                 if resp.status_code != 200:
                     print(f"      HTTP {resp.status_code}")
                     continue
@@ -59,6 +62,21 @@ def _parse_page(html, comm):
                     sqft = float(qmi.get("sqft") or qmi.get("squareFeet") or 0) or None
                 except (ValueError, TypeError):
                     sqft = None
+
+                # SOLD detection: check for sold/unavailable status indicators
+                status_raw = str(qmi.get("status", "")).upper()
+                availability = str(qmi.get("availability", "")).upper()
+                is_sold = (qmi.get("sold", False) or qmi.get("isSold", False) or
+                          status_raw in ("SOLD", "UNAVAILABLE", "CLOSED") or
+                          availability in ("SOLD", "UNAVAILABLE", "NOT_AVAILABLE"))
+
+                if is_sold:
+                    status = "SOLD"
+                    is_available = False
+                else:
+                    status = "MOVE_IN_READY"
+                    is_available = True
+
                 homes.append({
                     "builder": "Toll Brothers", "community": community_name, "city": city,
                     "plan_name": qmi.get("modelName") or qmi.get("planName") or "",
@@ -66,8 +84,8 @@ def _parse_page(html, comm):
                     "address": addr, "price": price, "was_price": None,
                     "beds": qmi.get("bedrooms") or qmi.get("beds"),
                     "baths": str(qmi.get("bathrooms") or qmi.get("baths") or ""),
-                    "sqft": sqft, "status": "MOVE_IN_READY",
-                    "is_hotw": False, "is_available": True, "is_55_plus": is_55,
+                    "sqft": sqft, "status": status,
+                    "is_hotw": False, "is_available": is_available, "is_55_plus": is_55,
                     "home_url": url, "schools": [],
                 })
         except Exception:

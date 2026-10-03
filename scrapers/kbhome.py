@@ -5,7 +5,10 @@ import json
 import time
 import requests
 from scrapers.base import BaseScraper
-from scrapers.common import BROWSER_HEADERS, parse_price, normalize_address, dedup_by_address, build_school_dict
+from scrapers.common import (
+    get_browser_headers, get_jittered_delay,
+    parse_price, normalize_address, dedup_by_address, build_school_dict
+)
 from scrapers.schools import lookup
 
 BASE_URL = "https://www.kbhome.com"
@@ -17,13 +20,14 @@ class KBHomeScraper(BaseScraper):
     def scrape(self, communities, schools_cache):
         all_homes = []
         print(f"  [KB Home] Scraping {len(communities)} communities...")
-        for comm in communities:
+        for i, comm in enumerate(communities):
             if comm.get("status") == "coming_soon":
                 print(f"    {comm['name']}: coming soon — monitoring")
                 continue
             try:
-                time.sleep(1.0)
-                resp = requests.get(comm["url"], headers=BROWSER_HEADERS, verify=False, timeout=20)
+                if i > 0:
+                    time.sleep(get_jittered_delay("KB Home"))
+                resp = requests.get(comm["url"], headers=get_browser_headers(), verify=False, timeout=20)
                 if resp.status_code != 200:
                     continue
                 homes = _parse_qmis(resp.text, comm)
@@ -71,6 +75,17 @@ def _normalize(h, comm):
     except (ValueError, TypeError):
         sqft = None
 
+    # SOLD detection: check for sold/unavailable status indicators
+    status_raw = str(h.get("status", "")).upper()
+    is_sold = h.get("sold", False) or h.get("isSold", False) or status_raw in ("SOLD", "UNAVAILABLE", "NOT_AVAILABLE")
+
+    if is_sold:
+        status = "SOLD"
+        is_available = False
+    else:
+        status = "MOVE_IN_READY"
+        is_available = True
+
     return {
         "builder": "KB Home", "community": comm["name"], "city": comm["city"],
         "plan_name": str(h.get("planName") or h.get("name") or ""),
@@ -78,7 +93,7 @@ def _normalize(h, comm):
         "address": addr, "price": price, "was_price": None,
         "beds": h.get("bedrooms") or h.get("beds"),
         "baths": str(h.get("bathrooms") or ""), "sqft": sqft,
-        "status": "MOVE_IN_READY", "is_hotw": False, "is_available": True,
+        "status": status, "is_hotw": False, "is_available": is_available,
         "home_url": hurl,
     }
 

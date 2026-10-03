@@ -6,7 +6,10 @@ import time
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from scrapers.base import BaseScraper
-from scrapers.common import BROWSER_HEADERS, POLITE_DELAY, normalize_address, dedup_by_address
+from scrapers.common import (
+    get_browser_headers, get_jittered_delay,
+    normalize_address, dedup_by_address
+)
 from scrapers.schools import lookup as school_lookup
 
 BASE_URL = "https://www.taylormorrison.com"
@@ -69,8 +72,8 @@ class TaylorMorrisonScraper(BaseScraper):
 
 def _scrape_html(comm, schools_cache):
     """Fetch community page and parse scDataStore."""
-    time.sleep(POLITE_DELAY)
-    resp = requests.get(comm["url"], headers=BROWSER_HEADERS, verify=False, timeout=20)
+    time.sleep(get_jittered_delay("Taylor Morrison"))
+    resp = requests.get(comm["url"], headers=get_browser_headers(), verify=False, timeout=20)
     if resp.status_code != 200:
         return []
     return _parse_scDataStore(resp.text, comm, schools_cache)
@@ -195,11 +198,19 @@ def _normalize(h, comm):
     was_raw = h.get("wasPrice", 0) or 0
     was = float(was_raw) if was_raw and was_raw != price else None
 
+    # SOLD detection: check for sold/unavailable indicators
     status_raw = str(h.get("availabilityStatus", ""))
-    if status_raw == "0":
+    sold_indicator = h.get("isSold", False) or h.get("sold", False) or h.get("status", "").upper() == "SOLD"
+
+    if sold_indicator:
+        status = "SOLD"
+        is_available = False
+    elif status_raw == "0":
         status = "QUICK_MOVE_IN"
+        is_available = True
     else:
         status = "UNDER_CONSTRUCTION"
+        is_available = True
 
     addr = normalize_address(str(h.get("address") or "").strip(), comm["city"])
 
@@ -222,6 +233,6 @@ def _normalize(h, comm):
         "homesite": str(h.get("homeSite") or ""),
         "address": addr, "price": float(price), "was_price": was,
         "beds": beds, "baths": str(baths or ""), "sqft": sqft,
-        "status": status, "is_hotw": False, "is_available": True,
+        "status": status, "is_hotw": False, "is_available": is_available,
         "home_url": home_url,
     }

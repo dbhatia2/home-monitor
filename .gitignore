@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .env
+.env.production
+.env.local
 .DS_Store
 data/*.csv
 data/*.json
@@ -9,3 +11,15 @@ db/data/
 db/backups/*.sql
 .pytest_cache/
 venv/
+
+# Corporate TLS root CA exported for Node (see mobile/README.md)
+.zscaler-ca.pem
+.expo-home/
+
+# Vercel
+.vercel
+
+# Expo / EAS
+.expo/
+dist/
+web-build/

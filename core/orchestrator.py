@@ -51,11 +51,14 @@ def run() -> list:
     print(f"Scrapers: {', '.join(scrapers.keys())}\n")
 
     # 4. Run each builder
+    import random
     all_homes = []
     for builder_name, scraper_cls in scrapers.items():
         builder_comms = [c for c in communities if c["builder"] == builder_name]
         if not builder_comms:
             continue
+        # Randomize community order to avoid predictable scraping patterns
+        random.shuffle(builder_comms)
         active = [c for c in builder_comms if c.get("status") != "coming_soon"]
         coming = [c for c in builder_comms if c.get("status") == "coming_soon"]
         print(f"Scraping {builder_name} ({len(active)} active, {len(coming)} coming soon)...")

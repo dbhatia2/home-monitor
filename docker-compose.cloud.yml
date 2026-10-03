@@ -1,0 +1,18 @@
+# Docker Compose configuration for running scraper with cloud database (PlanetScale)
+# Usage: docker compose -f docker-compose.cloud.yml up -d scraper
+#
+# Before running:
+# 1. Update .env with PlanetScale credentials (DB_HOST, DB_USER, DB_PASS, etc.)
+# 2. Ensure DB_WRITE=true in .env
+#
+# This removes the local MySQL dependency and connects directly to PlanetScale
+
+services:
+  scraper:
+    build: .
+    container_name: home_scraper
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data

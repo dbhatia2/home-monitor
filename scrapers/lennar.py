@@ -5,7 +5,10 @@ import json
 import time
 import requests
 from scrapers.base import BaseScraper
-from scrapers.common import BROWSER_HEADERS, POLITE_DELAY, normalize_address, dedup_by_address, build_school_dict
+from scrapers.common import (
+    get_browser_headers, get_jittered_delay,
+    normalize_address, dedup_by_address, build_school_dict
+)
 from scrapers.schools import lookup
 
 BASE_URL = "https://www.lennar.com"
@@ -23,8 +26,8 @@ class LennarScraper(BaseScraper):
             print(f"  [Lennar] {comm['name']} ({comm['city']})")
             try:
                 if i > 0:
-                    time.sleep(POLITE_DELAY)
-                resp = requests.get(comm["url"], headers=BROWSER_HEADERS, verify=False, timeout=30)
+                    time.sleep(get_jittered_delay("Lennar"))
+                resp = requests.get(comm["url"], headers=get_browser_headers(), verify=False, timeout=30)
                 if resp.status_code != 200:
                     print(f"    HTTP {resp.status_code}")
                     continue
@@ -46,9 +49,9 @@ class LennarScraper(BaseScraper):
 def _fetch_schools(community_url, cache):
     """Fetch /nearby-schools and parse SchoolType from Apollo cache."""
     try:
-        time.sleep(POLITE_DELAY)
+        time.sleep(get_jittered_delay("Lennar"))
         resp = requests.get(community_url.rstrip("/") + "/nearby-schools",
-                            headers=BROWSER_HEADERS, verify=False, timeout=20)
+                            headers=get_browser_headers(), verify=False, timeout=20)
         if resp.status_code != 200:
             return []
         m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', resp.text, re.DOTALL)
@@ -134,9 +137,15 @@ def _extract(hs, plans, comms, comm):
     ulast = upath.rstrip("/").split("/")[-1] if upath else ""
     has_url = ulast.isdigit() and len(ulast) >= 8
 
-    if status in ("UNDEFINED", "Unknown", "None"):
+    # SOLD detection: check for explicit SOLD status from API
+    if status.upper() in ("SOLD", "SOLD_OUT", "CLOSED", "UNAVAILABLE"):
+        status = "SOLD"
+        is_avail = False
+    elif status in ("UNDEFINED", "Unknown", "None"):
         status = "AVAILABLE" if has_url else "FUTURE"
-    is_avail = has_url or status in ("AVAILABLE", "MOVE_IN_READY", "UNDER_CONSTRUCTION", "MODEL_HOME")
+        is_avail = has_url
+    else:
+        is_avail = has_url or status in ("AVAILABLE", "MOVE_IN_READY", "UNDER_CONSTRUCTION", "MODEL_HOME")
 
     return {
         "builder": "Lennar", "community": collection, "city": comm["city"],
