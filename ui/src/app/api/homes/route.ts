@@ -81,8 +81,19 @@ async function getCachedStats(): Promise<CityStats[]> {
 }
 
 export const GET = withApi(async (req) => {
-  const searchParams = req.nextUrl.searchParams;
-  const filters = parseFilters(searchParams);
+  let searchParams;
+  try {
+    searchParams = req.nextUrl.searchParams;
+  } catch (e) {
+    throw new Error(`Failed to get searchParams: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  let filters;
+  try {
+    filters = parseFilters(searchParams);
+  } catch (e) {
+    throw new Error(`Failed to parse filters: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   const where: string[] = [
     "h.status NOT IN ('SOLD','FUTURE','MODEL_HOME')",
