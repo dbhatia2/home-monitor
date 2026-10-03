@@ -1,4 +1,3 @@
-import { RowDataPacket } from "mysql2";
 import pool from "@/lib/db";
 import { json, preflight, withApi } from "@/lib/cors";
 import type { Home, PricePoint, School } from "@/lib/types";
@@ -15,7 +14,7 @@ export const GET = withApi(async (_req: Request, ctx: Ctx) => {
     return json({ error: "Invalid home id" }, { status: 400 });
   }
 
-  const [homeRows] = await pool.query<RowDataPacket[]>(
+  const { rows: homeRows } = await pool.query(
     `SELECT
        h.id, h.address, h.home_url, h.beds, h.baths, h.sqft,
        h.plan_name, h.homesite, h.price, h.was_price, h.price_per_sqft,
@@ -30,7 +29,7 @@ export const GET = withApi(async (_req: Request, ctx: Ctx) => {
      JOIN communities co ON co.id = h.community_id
      JOIN builders b ON b.id = co.builder_id
      JOIN cities ci ON ci.id = co.city_id
-     WHERE h.id = ?`,
+     WHERE h.id = $1`,
     [homeId],
   );
 
@@ -40,20 +39,20 @@ export const GET = withApi(async (_req: Request, ctx: Ctx) => {
 
   const home = homeRows[0];
 
-  const [schoolRows] = await pool.query<RowDataPacket[]>(
+  const { rows: schoolRows } = await pool.query(
     `SELECT s.name, s.grades, s.type, s.district, s.rating_gs,
             s.rating_niche, s.url, cs.distance, cs.approximate
      FROM community_schools cs
      JOIN schools s ON s.id = cs.school_id
-     WHERE cs.community_id = ?
+     WHERE cs.community_id = $1
      ORDER BY s.rating_gs DESC, s.name`,
     [home.community_id],
   );
 
-  const [historyRows] = await pool.query<RowDataPacket[]>(
+  const { rows: historyRows } = await pool.query(
     `SELECT old_price, new_price, drop_amt, drop_pct, drop_source, changed_at
      FROM price_history
-     WHERE home_id = ?
+     WHERE home_id = $1
      ORDER BY changed_at DESC
      LIMIT 50`,
     [homeId],

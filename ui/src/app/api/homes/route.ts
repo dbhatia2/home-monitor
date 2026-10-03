@@ -1,4 +1,3 @@
-import { RowDataPacket } from "mysql2";
 import pool from "@/lib/db";
 import { json, preflight, withApi } from "@/lib/cors";
 import { filterHomes, scoreAll, sortHomes } from "@/lib/scoring";
@@ -55,11 +54,11 @@ async function getCachedStats(): Promise<CityStats[]> {
   }
 
   // Cache miss or expired - fetch fresh data
-  const [statsRows] = await pool.query<RowDataPacket[]>(`
+  const { rows: statsRows } = await pool.query(`
     SELECT ci.name AS city,
            COUNT(*) AS total,
-           SUM(h.status IN ('MOVE_IN_READY','QUICK_MOVE_IN')) AS mir,
-           SUM(h.price_drop = 1) AS drops,
+           SUM(CASE WHEN h.status IN ('MOVE_IN_READY','QUICK_MOVE_IN') THEN 1 ELSE 0 END) AS mir,
+           SUM(CASE WHEN h.price_drop = true THEN 1 ELSE 0 END) AS drops,
            ROUND(AVG(h.price)) AS avg_price,
            ROUND(AVG(h.price / NULLIF(h.sqft, 0))) AS avg_ppsf
     FROM homes h
@@ -88,54 +87,58 @@ export const GET = withApi(async (req) => {
     "(h.price > 0 OR h.status = 'COMING_SOON')",
   ];
   const params: (string | number)[] = [];
+  let paramIndex = 1;
 
-  // Coarse push-down to MySQL. filterHomes() below re-applies every rule
+  // Helper to get next PostgreSQL parameter placeholder
+  const nextParam = () => `$${paramIndex++}`;
+
+  // Coarse push-down to database. filterHomes() below re-applies every rule
   // precisely (it also parses free-text baths), so this is purely an
   // optimisation and the two can never disagree on the final result.
   const cities = filters.cities ?? [];
   if (cities.length) {
-    where.push(`ci.name IN (${cities.map(() => "?").join(",")})`);
+    where.push(`ci.name IN (${cities.map(() => nextParam()).join(",")})`);
     params.push(...cities);
   }
   if (filters.address) {
-    where.push("h.address LIKE ?");
+    where.push(`h.address LIKE ${nextParam()}`);
     params.push(`%${filters.address}%`);
   }
   if (filters.builders?.length) {
-    where.push(`b.name IN (${filters.builders.map(() => "?").join(",")})`);
+    where.push(`b.name IN (${filters.builders.map(() => nextParam()).join(",")})`);
     params.push(...filters.builders);
   }
   if (filters.communities?.length) {
-    where.push(`co.name IN (${filters.communities.map(() => "?").join(",")})`);
+    where.push(`co.name IN (${filters.communities.map(() => nextParam()).join(",")})`);
     params.push(...filters.communities);
   }
   if (filters.status?.length) {
-    where.push(`h.status IN (${filters.status.map(() => "?").join(",")})`);
+    where.push(`h.status IN (${filters.status.map(() => nextParam()).join(",")})`);
     params.push(...filters.status);
   }
   if (filters.minBeds) {
-    where.push("h.beds >= ?");
+    where.push(`h.beds >= ${nextParam()}`);
     params.push(filters.minBeds);
   }
   if (filters.maxPrice) {
-    where.push("h.price <= ?");
+    where.push(`h.price <= ${nextParam()}`);
     params.push(filters.maxPrice);
   }
   if (filters.minPrice) {
-    where.push("(h.price >= ? OR h.price <= 0)");
+    where.push(`(h.price >= ${nextParam()} OR h.price <= 0)`);
     params.push(filters.minPrice);
   }
   if (filters.minSqft) {
-    where.push("(h.sqft >= ? OR h.sqft IS NULL OR h.sqft <= 0)");
+    where.push(`(h.sqft >= ${nextParam()} OR h.sqft IS NULL OR h.sqft <= 0)`);
     params.push(filters.minSqft);
   }
-  if (filters.exclude55) where.push("co.is_55_plus = 0");
-  if (filters.priceDropOnly) where.push("h.price_drop = 1 AND h.price_drop_amt > 0");
-  if (filters.newOnly) where.push("h.new_listing = 1");
+  if (filters.exclude55) where.push("co.is_55_plus = false");
+  if (filters.priceDropOnly) where.push("h.price_drop = true AND h.price_drop_amt > 0");
+  if (filters.newOnly) where.push("h.new_listing = true");
 
   const sql = `${SELECT_HOMES} WHERE ${where.join(" AND ")} LIMIT ${MAX_CANDIDATES}`;
 
-  const [rows] = await pool.query<RowDataPacket[]>(sql, params);
+  const { rows } = await pool.query(sql, params);
 
   // Score across the whole filtered set: value_ppsf is a relative rank, so it
   // has to be computed before slicing the page.
@@ -149,15 +152,15 @@ export const GET = withApi(async (req) => {
   const page = matched.slice(offset, offset + limit);
 
   // Fetch stats and cities in parallel
-  const [stats, cityRows] = await Promise.all([
+  const [stats, cityResult] = await Promise.all([
     getCachedStats(),
-    pool.query<RowDataPacket[]>("SELECT name FROM cities WHERE active = 1 ORDER BY name"),
+    pool.query("SELECT name FROM cities WHERE is_active = true ORDER BY name"),
   ]);
 
   return json({
     homes: page,
     stats,
-    cities: cityRows[0].map((r) => r.name as string),
+    cities: cityResult.rows.map((r: any) => r.name as string),
     total: matched.length,
     limit,
     offset,

@@ -1,4 +1,3 @@
-import { RowDataPacket } from "mysql2";
 import pool from "@/lib/db";
 import { json, preflight, withApi } from "@/lib/cors";
 import type { BuilderFacet, CommunityFacet } from "@/lib/types";
@@ -9,20 +8,20 @@ import type { BuilderFacet, CommunityFacet } from "@/lib/types";
  * sliders never span empty ranges.
  */
 export const GET = withApi(async () => {
-  const [cityRows] = await pool.query<RowDataPacket[]>(
-    "SELECT name FROM cities WHERE active = 1 ORDER BY name",
+  const { rows: cityRows } = await pool.query(
+    "SELECT name FROM cities WHERE is_active = true ORDER BY name",
   );
 
-  const [builderRows] = await pool.query<RowDataPacket[]>(`
+  const { rows: builderRows } = await pool.query(`
     SELECT DISTINCT b.name, b.color_hex
     FROM builders b
     JOIN communities co ON co.builder_id = b.id
     JOIN homes h ON h.community_id = co.id
-    WHERE b.active = 1 AND h.status NOT IN ('SOLD','FUTURE','MODEL_HOME')
+    WHERE b.is_active = true AND h.status NOT IN ('SOLD','FUTURE','MODEL_HOME')
     ORDER BY b.name
   `);
 
-  const [communityRows] = await pool.query<RowDataPacket[]>(`
+  const { rows: communityRows } = await pool.query(`
     SELECT DISTINCT co.name, ci.name AS city, b.name AS builder, co.is_55_plus
     FROM communities co
     JOIN cities ci ON ci.id = co.city_id
@@ -32,20 +31,20 @@ export const GET = withApi(async () => {
     ORDER BY ci.name, co.name
   `);
 
-  const [statusRows] = await pool.query<RowDataPacket[]>(`
+  const { rows: statusRows } = await pool.query(`
     SELECT DISTINCT status
     FROM homes
     WHERE status NOT IN ('SOLD','FUTURE','MODEL_HOME')
     ORDER BY status
   `);
 
-  const [rangeRows] = await pool.query<RowDataPacket[]>(`
+  const { rows: rangeRows } = await pool.query(`
     SELECT
-      MIN(NULLIF(price, 0))  AS minPrice,
-      MAX(price)             AS maxPrice,
-      MIN(NULLIF(sqft, 0))   AS minSqft,
-      MAX(sqft)              AS maxSqft,
-      MAX(beds)              AS maxBeds
+      MIN(NULLIF(price, 0))  AS "minPrice",
+      MAX(price)             AS "maxPrice",
+      MIN(NULLIF(sqft, 0))   AS "minSqft",
+      MAX(sqft)              AS "maxSqft",
+      MAX(beds)              AS "maxBeds"
     FROM homes
     WHERE status NOT IN ('SOLD','FUTURE','MODEL_HOME')
   `);
@@ -53,13 +52,13 @@ export const GET = withApi(async () => {
   const r = rangeRows[0] ?? {};
 
   return json({
-    cities: cityRows.map((row) => row.name as string),
-    builders: builderRows.map((row) => ({
+    cities: cityRows.map((row: any) => row.name as string),
+    builders: builderRows.map((row: any) => ({
       name: row.name,
       color_hex: row.color_hex,
     })) as BuilderFacet[],
     communities: communityRows as unknown as CommunityFacet[],
-    statuses: statusRows.map((row) => row.status as string),
+    statuses: statusRows.map((row: any) => row.status as string),
     ranges: {
       minPrice: Number(r.minPrice ?? 0),
       maxPrice: Number(r.maxPrice ?? 0),

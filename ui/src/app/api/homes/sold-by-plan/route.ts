@@ -27,20 +27,22 @@ export async function GET(req: NextRequest) {
       JOIN communities co ON co.id = h.community_id
       JOIN cities ci ON ci.id = co.city_id
       WHERE h.status = 'SOLD'
-        AND LOWER(h.plan_name) = LOWER(?)
+        AND LOWER(h.plan_name) = LOWER($1)
     `;
 
     const params: (string | number)[] = [planName];
+    let paramIndex = 2;
 
     if (communityId) {
-      query += " AND h.community_id = ?";
+      query += ` AND h.community_id = $${paramIndex}`;
       params.push(parseInt(communityId, 10));
+      paramIndex++;
     }
 
-    query += " ORDER BY h.last_seen_at DESC LIMIT ?";
+    query += ` ORDER BY h.last_seen_at DESC LIMIT $${paramIndex}`;
     params.push(limit);
 
-    const [rows] = await pool.query(query, params);
+    const { rows } = await pool.query(query, params);
     const soldHomes = rows as SoldHome[];
 
     if (soldHomes.length === 0) {
