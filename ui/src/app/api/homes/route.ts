@@ -80,7 +80,8 @@ async function getCachedStats(): Promise<CityStats[]> {
 }
 
 export const GET = withApi(async (req) => {
-  const { searchParams } = new URL(req.url);
+  const url = new URL(req.url, `https://${req.headers.get('host') || 'localhost'}`);
+  const { searchParams } = url;
   const filters = parseFilters(searchParams);
 
   const where: string[] = [
