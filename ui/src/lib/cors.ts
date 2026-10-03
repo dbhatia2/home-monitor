@@ -24,10 +24,10 @@ export function corsHeaders(): Record<string, string> {
   return { ...CORS_HEADERS };
 }
 
-export function json(body: unknown, init?: { status?: number }) {
+export function json(body: unknown, init?: { status?: number; headers?: Record<string, string> }) {
   return NextResponse.json(body, {
     status: init?.status ?? 200,
-    headers: corsHeaders(),
+    headers: { ...corsHeaders(), ...init?.headers },
   });
 }
 
