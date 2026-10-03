@@ -2,6 +2,8 @@ import pool from "@/lib/db";
 import { json, preflight, withApi } from "@/lib/cors";
 import type { BuilderFacet, CommunityFacet } from "@/lib/types";
 
+export const runtime = 'nodejs';
+
 /**
  * Facets used to populate the filter UI: which cities, builders, communities
  * and statuses actually have listings, plus the real price/sqft bounds so the

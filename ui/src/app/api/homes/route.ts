@@ -5,6 +5,8 @@ import { parseFilters } from "@/lib/query";
 import type { CityStats, Home } from "@/lib/types";
 import type { NextRequest } from "next/server";
 
+export const runtime = 'nodejs';
+
 /**
  * Upper bound on rows pulled from MySQL before scoring, as a safety valve.
  * Reduced from 5000 to 1000 to improve performance:

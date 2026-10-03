@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { SoldHomesResponse, SoldHome } from "@/lib/types";
 
+export const runtime = 'nodejs';
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const planName = searchParams.get("plan_name");
