@@ -75,8 +75,8 @@ export default function Dashboard() {
     .slice(0, 10);
 
   const topSqft = homes
-    .filter((h) => h.sqft > 0)
-    .sort((a, b) => b.sqft - a.sqft)
+    .filter((h) => h.sqft && h.sqft > 0)
+    .sort((a, b) => (b.sqft || 0) - (a.sqft || 0))
     .slice(0, 10);
 
   return (

@@ -53,14 +53,14 @@ export function analyzeHomesQuery(query: string, allHomes: Home[], lastShownHome
 
   // Apply bedroom filter
   if (filters.beds) {
-    filtered = filtered.filter(h => h.beds >= filters.beds!);
+    filtered = filtered.filter(h => h.beds !== null && h.beds >= filters.beds!);
     explanationParts.push(`${filters.beds}+ beds`);
   }
 
   // Apply bathroom filter
   if (filters.baths) {
     filtered = filtered.filter(h => {
-      const bathNum = parseFloat(h.baths);
+      const bathNum = h.baths ? parseFloat(String(h.baths)) : 0;
       return !isNaN(bathNum) && bathNum >= filters.baths!;
     });
     explanationParts.push(`${filters.baths}+ baths`);
@@ -69,18 +69,18 @@ export function analyzeHomesQuery(query: string, allHomes: Home[], lastShownHome
   // Apply builder filter
   if (filters.builders.length > 0) {
     filtered = filtered.filter(h =>
-      filters.builders.some(builder => h.builder.toLowerCase().includes(builder))
+      filters.builders.some(builder => h.builder?.toLowerCase().includes(builder))
     );
     explanationParts.push(`by ${filters.builders.join(", ")}`);
   }
 
   // Apply sqft filters
   if (filters.minSqft) {
-    filtered = filtered.filter(h => h.sqft >= filters.minSqft!);
+    filtered = filtered.filter(h => h.sqft !== null && h.sqft >= filters.minSqft!);
     explanationParts.push(`at least ${filters.minSqft.toLocaleString()} sqft`);
   }
   if (filters.maxSqft) {
-    filtered = filtered.filter(h => h.sqft > 0 && h.sqft <= filters.maxSqft!);
+    filtered = filtered.filter(h => h.sqft !== null && h.sqft > 0 && h.sqft <= filters.maxSqft!);
   }
 
   // Determine what they're asking for
@@ -89,26 +89,26 @@ export function analyzeHomesQuery(query: string, allHomes: Home[], lastShownHome
 
   switch (intent) {
     case "price_drops":
-      sortedHomes = sortedHomes.filter(h => h.price_drop === 1 && h.price_drop_amt > 0);
-      sortedHomes.sort((a, b) => b.price_drop_amt - a.price_drop_amt);
+      sortedHomes = sortedHomes.filter(h => h.price_drop === 1 && h.price_drop_amt !== null && h.price_drop_amt > 0);
+      sortedHomes.sort((a, b) => (b.price_drop_amt || 0) - (a.price_drop_amt || 0));
       break;
 
     case "best_value":
-      sortedHomes = sortedHomes.filter(h => h.sqft > 0 && h.price > 0);
-      sortedHomes.sort((a, b) => (a.price / a.sqft) - (b.price / b.sqft));
+      sortedHomes = sortedHomes.filter(h => h.sqft !== null && h.sqft > 0 && h.price !== null && h.price > 0);
+      sortedHomes.sort((a, b) => ((a.price || 0) / (a.sqft || 1)) - ((b.price || 0) / (b.sqft || 1)));
       break;
 
     case "largest":
-      sortedHomes = sortedHomes.filter(h => h.sqft > 0);
-      sortedHomes.sort((a, b) => b.sqft - a.sqft);
+      sortedHomes = sortedHomes.filter(h => h.sqft !== null && h.sqft > 0);
+      sortedHomes.sort((a, b) => (b.sqft || 0) - (a.sqft || 0));
       break;
 
     case "cheapest":
-      sortedHomes.sort((a, b) => a.price - b.price);
+      sortedHomes.sort((a, b) => (a.price || 0) - (b.price || 0));
       break;
 
     case "most_expensive":
-      sortedHomes.sort((a, b) => b.price - a.price);
+      sortedHomes.sort((a, b) => (b.price || 0) - (a.price || 0));
       break;
 
     case "move_in_ready":
@@ -123,8 +123,8 @@ export function analyzeHomesQuery(query: string, allHomes: Home[], lastShownHome
 
     default:
       // Default to best value
-      sortedHomes = sortedHomes.filter(h => h.sqft > 0 && h.price > 0);
-      sortedHomes.sort((a, b) => (a.price / a.sqft) - (b.price / b.sqft));
+      sortedHomes = sortedHomes.filter(h => h.sqft !== null && h.sqft > 0 && h.price !== null && h.price > 0);
+      sortedHomes.sort((a, b) => ((a.price || 0) / (a.sqft || 1)) - ((b.price || 0) / (b.sqft || 1)));
   }
 
   // Limit results
@@ -198,8 +198,8 @@ function analyzeSpecificHome(
 
   if (!targetHome && allHomes.length > 0) {
     targetHome = allHomes.find(h => h.price_drop === 1) ||
-                 allHomes.filter(h => h.sqft > 0 && h.price > 0)
-                         .sort((a, b) => (a.price / a.sqft) - (b.price / b.sqft))[0];
+                 allHomes.filter(h => h.sqft !== null && h.sqft > 0 && h.price !== null && h.price > 0)
+                         .sort((a, b) => ((a.price || 0) / (a.sqft || 1)) - ((b.price || 0) / (b.sqft || 1)))[0];
   }
 
   if (!targetHome) {
@@ -218,29 +218,29 @@ function analyzeSpecificHome(
 }
 
 function generateDetailedAnalysis(home: Home, query: string): string {
-  const ppsf = home.sqft > 0 ? Math.round(home.price / home.sqft) : 0;
+  const ppsf = (home.sqft !== null && home.sqft > 0 && home.price !== null) ? Math.round(home.price / home.sqft) : 0;
 
   let response = `Alright, let's talk about **${home.community}** in ${home.city}.\n\n`;
 
   response += `**The basics:**\n`;
-  response += `💰 ${formatPrice(home.price)}`;
-  if (home.price_drop === 1 && home.price_drop_amt > 0) {
+  response += `💰 ${formatPrice(home.price || 0)}`;
+  if (home.price_drop === 1 && home.price_drop_amt !== null && home.price_drop_amt > 0) {
     response += ` (dropped from ${formatPrice(home.prev_price || home.was_price || 0)})`;
   }
   response += `\n`;
-  response += `🏠 ${home.beds} beds, ${home.baths} baths`;
-  if (home.sqft > 0) {
+  response += `🏠 ${home.beds || 0} beds, ${home.baths || 0} baths`;
+  if (home.sqft !== null && home.sqft > 0) {
     response += ` • ${home.sqft.toLocaleString()} sqft (${formatPrice(ppsf)}/sqft)`;
   }
   response += `\n`;
   response += `🏗️ ${home.builder}\n`;
-  response += `📍 ${home.status.replace(/_/g, ' ')}\n\n`;
+  response += `📍 ${home.status?.replace(/_/g, ' ') || 'Available'}\n\n`;
 
   // Pros
   response += `**What's good:**\n`;
   const pros: string[] = [];
 
-  if (home.price_drop === 1 && home.price_drop_amt > 0) {
+  if (home.price_drop === 1 && home.price_drop_amt !== null && home.price_drop_amt > 0) {
     pros.push(`Just dropped ${formatPrice(home.price_drop_amt)} - seller's motivated`);
   }
 
@@ -252,11 +252,11 @@ function generateDetailedAnalysis(home: Home, query: string): string {
     pros.push(`Solid value at ${formatPrice(ppsf)}/sqft for this area`);
   }
 
-  if (home.sqft >= 2500) {
+  if (home.sqft !== null && home.sqft >= 2500) {
     pros.push("Spacious - won't feel cramped");
   }
 
-  if (home.beds >= 4) {
+  if (home.beds !== null && home.beds >= 4) {
     pros.push(`${home.beds} bedrooms - room for everyone`);
   }
 
@@ -286,11 +286,11 @@ function generateDetailedAnalysis(home: Home, query: string): string {
     cons.push(`${formatPrice(ppsf)}/sqft is steep for this market`);
   }
 
-  if (home.beds < 3) {
+  if (home.beds !== null && home.beds < 3) {
     cons.push("Only 2 beds - could feel tight");
   }
 
-  if (home.sqft > 0 && home.sqft < 1500) {
+  if (home.sqft !== null && home.sqft > 0 && home.sqft < 1500) {
     cons.push("On the smaller side");
   }
 
@@ -341,51 +341,51 @@ function generateSmartExplanation(
 
   if (wantsSingle && homes.length === 1) {
     const h = homes[0];
-    const ppsf = h.sqft > 0 ? Math.round(h.price / h.sqft) : 0;
+    const ppsf = (h.sqft !== null && h.sqft > 0 && h.price !== null) ? Math.round(h.price / h.sqft) : 0;
 
     switch (intent) {
       case "price_drops":
         intro = `**The biggest price drop${filterText}:**\n`;
-        intro += `${h.community} in ${h.city} dropped ${formatPrice(h.price_drop_amt)} `;
-        intro += `(now ${formatPrice(h.price)})`;
+        intro += `${h.community} in ${h.city} dropped ${formatPrice(h.price_drop_amt || 0)} `;
+        intro += `(now ${formatPrice(h.price || 0)})`;
         if (ppsf > 0) intro += ` - that's ${formatPrice(ppsf)}/sqft`;
-        intro += `\n\n${h.beds} bed, ${h.baths} bath`;
-        if (h.sqft > 0) intro += ` • ${h.sqft.toLocaleString()} sqft`;
+        intro += `\n\n${h.beds || 0} bed, ${h.baths || 0} bath`;
+        if (h.sqft && h.sqft > 0) intro += ` • ${h.sqft.toLocaleString()} sqft`;
         intro += `\nBuilt by ${h.builder}`;
         return intro;
 
       case "best_value":
         intro = `**Best value home${filterText}:**\n`;
         intro += `${h.community} in ${h.city} at ${formatPrice(ppsf)}/sqft `;
-        intro += `(${formatPrice(h.price)} total)`;
-        intro += `\n\n${h.beds} bed, ${h.baths} bath • ${h.sqft.toLocaleString()} sqft`;
+        intro += `(${formatPrice(h.price || 0)} total)`;
+        intro += `\n\n${h.beds || 0} bed, ${h.baths || 0} bath • ${(h.sqft || 0).toLocaleString()} sqft`;
         intro += `\nBuilt by ${h.builder}`;
-        if (h.price_drop === 1) intro += `\n\nBonus: Just dropped ${formatPrice(h.price_drop_amt)}`;
+        if (h.price_drop === 1) intro += `\n\nBonus: Just dropped ${formatPrice(h.price_drop_amt || 0)}`;
         return intro;
 
       case "largest":
         intro = `**Biggest home${filterText}:**\n`;
-        intro += `${h.community} in ${h.city} - ${h.sqft.toLocaleString()} sqft of space\n`;
-        intro += `${formatPrice(h.price)} • ${h.beds} bed, ${h.baths} bath`;
+        intro += `${h.community} in ${h.city} - ${(h.sqft || 0).toLocaleString()} sqft of space\n`;
+        intro += `${formatPrice(h.price || 0)} • ${h.beds || 0} bed, ${h.baths || 0} bath`;
         if (ppsf > 0) intro += ` • ${formatPrice(ppsf)}/sqft`;
         intro += `\nBuilt by ${h.builder}`;
         return intro;
 
       case "cheapest":
         intro = `**Cheapest option${filterText}:**\n`;
-        intro += `${h.community} in ${h.city} for ${formatPrice(h.price)}\n`;
-        intro += `${h.beds} bed, ${h.baths} bath`;
-        if (h.sqft > 0) intro += ` • ${h.sqft.toLocaleString()} sqft (${formatPrice(ppsf)}/sqft)`;
+        intro += `${h.community} in ${h.city} for ${formatPrice(h.price || 0)}\n`;
+        intro += `${h.beds || 0} bed, ${h.baths || 0} bath`;
+        if (h.sqft && h.sqft > 0) intro += ` • ${h.sqft.toLocaleString()} sqft (${formatPrice(ppsf)}/sqft)`;
         intro += `\nBuilt by ${h.builder}`;
         return intro;
 
       default:
         intro = `**Top pick${filterText}:**\n`;
         intro += `${h.community} in ${h.city}\n`;
-        intro += `${formatPrice(h.price)} • ${h.beds} bed, ${h.baths} bath`;
-        if (h.sqft > 0) intro += ` • ${h.sqft.toLocaleString()} sqft`;
+        intro += `${formatPrice(h.price || 0)} • ${h.beds || 0} bed, ${h.baths || 0} bath`;
+        if (h.sqft && h.sqft > 0) intro += ` • ${h.sqft.toLocaleString()} sqft`;
         intro += `\nBuilt by ${h.builder}`;
-        if (h.price_drop === 1) intro += `\n\nJust dropped ${formatPrice(h.price_drop_amt)}`;
+        if (h.price_drop === 1) intro += `\n\nJust dropped ${formatPrice(h.price_drop_amt || 0)}`;
         return intro;
     }
   }
@@ -396,11 +396,11 @@ function generateSmartExplanation(
       intro = `Got ${homes.length} with price drops${filterText}:\n\n`;
       break;
     case "best_value":
-      const avgPpsf = Math.round(homes.reduce((sum, h) => sum + (h.price / h.sqft), 0) / homes.length);
+      const avgPpsf = Math.round(homes.reduce((sum, h) => sum + ((h.price && h.sqft) ? h.price / h.sqft : 0), 0) / homes.length);
       intro = `${homes.length} good deals${filterText} (avg ${formatPrice(avgPpsf)}/sqft):\n\n`;
       break;
     case "largest":
-      const avgSqft = Math.round(homes.reduce((sum, h) => sum + h.sqft, 0) / homes.length);
+      const avgSqft = Math.round(homes.reduce((sum, h) => sum + (h.sqft || 0), 0) / homes.length);
       intro = `${homes.length} big ones${filterText} (avg ${avgSqft.toLocaleString()} sqft):\n\n`;
       break;
     case "move_in_ready":
@@ -411,11 +411,11 @@ function generateSmartExplanation(
   }
 
   const homesList = homes.map((h, i) => {
-    const ppsf = h.sqft > 0 ? Math.round(h.price / h.sqft) : 0;
+    const ppsf = (h.sqft && h.sqft > 0 && h.price) ? Math.round(h.price / h.sqft) : 0;
     let line = `${i + 1}. **${h.community}** - ${h.city}\n`;
-    line += `   ${formatPrice(h.price)} • ${h.beds} bed, ${h.baths} bath`;
+    line += `   ${formatPrice(h.price || 0)} • ${h.beds || 0} bed, ${h.baths || 0} bath`;
 
-    if (h.sqft > 0) {
+    if (h.sqft && h.sqft > 0) {
       line += ` • ${h.sqft.toLocaleString()} sqft`;
       if (ppsf > 0) line += ` (${formatPrice(ppsf)}/sqft)`;
     }

@@ -70,12 +70,13 @@ async function getCachedStats(): Promise<CityStats[]> {
   `);
 
   // Update cache
+  const stats = statsRows as unknown as CityStats[];
   statsCache = {
-    data: statsRows as unknown as CityStats[],
+    data: stats,
     timestamp: now,
   };
 
-  return statsCache.data;
+  return stats;
 }
 
 export const GET = withApi(async (req) => {
