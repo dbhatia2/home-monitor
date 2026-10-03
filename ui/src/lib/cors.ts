@@ -69,7 +69,11 @@ export function withApi<T extends unknown[]>(
       return await handler(req, ...rest);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Unknown error";
-      console.error("[api]", message);
+      const stack = e instanceof Error ? e.stack : undefined;
+      console.error("[api] Error:", message);
+      console.error("[api] Stack:", stack);
+      console.error("[api] Request URL:", req.url);
+      console.error("[api] Request nextUrl:", (req as any).nextUrl);
       return json({ error: message }, { status: 500 });
     }
   };
