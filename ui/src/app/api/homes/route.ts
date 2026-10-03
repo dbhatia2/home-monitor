@@ -81,7 +81,7 @@ async function getCachedStats(): Promise<CityStats[]> {
 }
 
 export const GET = withApi(async (req) => {
-  const searchParams = (req as NextRequest).nextUrl.searchParams;
+  const searchParams = req.nextUrl.searchParams;
   const filters = parseFilters(searchParams);
 
   const where: string[] = [

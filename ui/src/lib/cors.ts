@@ -10,7 +10,7 @@
  * (localhost:3000 in a browser) friction-free.
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -44,7 +44,7 @@ export function preflight() {
  * the browser and cannot be forged by page scripts, and non-browser clients
  * (the native app, curl) never send it, so they still need the key.
  */
-export function requireApiKey(req: Request): NextResponse | null {
+export function requireApiKey(req: NextRequest | Request): NextResponse | null {
   const expected = process.env.API_KEY;
   if (!expected) return null;
 
@@ -59,9 +59,9 @@ export function requireApiKey(req: Request): NextResponse | null {
 
 /** Wraps a handler with the API key check and consistent error shaping. */
 export function withApi<T extends unknown[]>(
-  handler: (req: Request, ...rest: T) => Promise<NextResponse>,
+  handler: (req: NextRequest, ...rest: T) => Promise<NextResponse>,
 ) {
-  return async (req: Request, ...rest: T): Promise<NextResponse> => {
+  return async (req: NextRequest, ...rest: T): Promise<NextResponse> => {
     const denied = requireApiKey(req);
     if (denied) return denied;
 
