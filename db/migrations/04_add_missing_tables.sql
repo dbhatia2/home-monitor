@@ -1,6 +1,9 @@
 -- Add missing tables for scraper to work with Supabase
 -- PostgreSQL version
 
+-- Add builder_meta column to communities (if missing)
+ALTER TABLE communities ADD COLUMN IF NOT EXISTS builder_meta JSONB;
+
 -- price_history table
 CREATE TABLE IF NOT EXISTS price_history (
     id          BIGSERIAL PRIMARY KEY,

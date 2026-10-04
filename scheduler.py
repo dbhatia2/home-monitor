@@ -33,8 +33,8 @@ def job_emails():
     """Send emails to all daily users."""
     try:
         from db.user_store import get_active_users
-        from email.digest import build_and_send as send_digest
-        from email.personal import build_and_send as send_personal
+        from emails.digest import build_and_send as send_digest
+        from emails.personal import build_and_send as send_personal
 
         users = get_active_users(frequency="daily")
         log.info(f"Sending emails to {len(users)} daily users")
