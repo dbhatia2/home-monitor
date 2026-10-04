@@ -9,7 +9,7 @@ def get_active_cities() -> list:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name, state, county, schools_url FROM cities WHERE active = 1")
+            cur.execute("SELECT id, name, state, county, schools_url FROM cities WHERE active = true")
             return cur.fetchall()
     finally:
         conn.close()
@@ -26,7 +26,7 @@ def get_active_communities() -> list:
                 FROM communities c
                 JOIN builders b ON b.id = c.builder_id
                 JOIN cities ci  ON ci.id = c.city_id
-                WHERE c.status != 'sold_out' AND b.active = 1 AND ci.active = 1
+                WHERE c.status != 'sold_out' AND b.active = true AND ci.active = true
                 ORDER BY ci.name, b.name, c.name
             """)
             rows = cur.fetchall()
@@ -47,7 +47,7 @@ def get_builders() -> dict:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT name, color_hex, base_url FROM builders WHERE active = 1")
+            cur.execute("SELECT name, color_hex, base_url FROM builders WHERE active = true")
             return {r["name"]: r for r in cur.fetchall()}
     finally:
         conn.close()

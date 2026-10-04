@@ -1,4 +1,4 @@
-"""Write scraped homes to MySQL. City derived per-home. Per-builder transactions."""
+"""Write scraped homes to PostgreSQL. City derived per-home. Per-builder transactions."""
 
 import json
 import logging
@@ -21,9 +21,10 @@ def _get_or_create_community(cur, builder_id, city_id, name, url="", is_55=False
     r = cur.fetchone()
     if r:
         return r["id"]
-    cur.execute("INSERT INTO communities (builder_id,city_id,name,url,status,is_55_plus) VALUES(%s,%s,%s,%s,%s,%s)",
-                (builder_id, city_id, name, url, status, int(is_55)))
-    return cur.lastrowid
+    cur.execute("""INSERT INTO communities (builder_id,city_id,name,url,status,is_55_plus)
+                   VALUES(%s,%s,%s,%s,%s,%s) RETURNING id""",
+                (builder_id, city_id, name, url, status, is_55))
+    return cur.fetchone()["id"]
 
 
 def _upsert_home(cur, home, community_id, ts):
@@ -43,13 +44,22 @@ def _upsert_home(cur, home, community_id, ts):
         INSERT INTO homes (community_id,address,home_url,beds,baths,sqft,plan_name,homesite,
             price,was_price,price_per_sqft,status,is_hotw,price_drop,price_drop_amt,
             drop_source,prev_price,new_listing,spotlight_features,first_seen_at,last_seen_at)
-        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new_home
-        ON DUPLICATE KEY UPDATE home_url=new_home.home_url,price=new_home.price,
-            was_price=new_home.was_price,price_per_sqft=new_home.price_per_sqft,
-            status=new_home.status,is_hotw=new_home.is_hotw,price_drop=new_home.price_drop,
-            price_drop_amt=new_home.price_drop_amt,prev_price=new_home.prev_price,
-            new_listing=new_home.new_listing,spotlight_features=new_home.spotlight_features,
-            last_seen_at=new_home.last_seen_at
+        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        ON CONFLICT (community_id, address)
+        DO UPDATE SET
+            home_url=EXCLUDED.home_url,
+            price=EXCLUDED.price,
+            was_price=EXCLUDED.was_price,
+            price_per_sqft=EXCLUDED.price_per_sqft,
+            status=EXCLUDED.status,
+            is_hotw=EXCLUDED.is_hotw,
+            price_drop=EXCLUDED.price_drop,
+            price_drop_amt=EXCLUDED.price_drop_amt,
+            prev_price=EXCLUDED.prev_price,
+            new_listing=EXCLUDED.new_listing,
+            spotlight_features=EXCLUDED.spotlight_features,
+            last_seen_at=EXCLUDED.last_seen_at
+        RETURNING id
     """, (
         community_id, addr,
         (home.get("home_url", "")[:499] or None),
@@ -62,17 +72,14 @@ def _upsert_home(cur, home, community_id, ts):
         int(home.get("was_price")) if home.get("was_price") else None,
         ppsf,
         str(home.get("status") or "UNKNOWN")[:29],
-        int(bool(home.get("is_hotw"))),
-        int(bool(home.get("price_drop"))),
+        bool(home.get("is_hotw")),
+        bool(home.get("price_drop")),
         int(home.get("price_drop_amount") or 0),
         str(home.get("drop_source") or "snapshot")[:19],
         int(home.get("prev_price")) if home.get("prev_price") else None,
-        int(bool(home.get("new_listing"))),
+        bool(home.get("new_listing")),
         sfj, ts, ts,
     ))
-    if cur.lastrowid and cur.lastrowid != 0:
-        return cur.lastrowid, changed, old_p
-    cur.execute("SELECT id FROM homes WHERE community_id=%s AND address=%s", (community_id, addr))
     return cur.fetchone()["id"], changed, old_p
 
 
@@ -89,22 +96,24 @@ def _upsert_school(cur, school, city_id):
     if not name:
         return None
     cur.execute("""INSERT INTO schools (name,grades,type,district,rating_gs,rating_niche,url,city_id)
-        VALUES(%s,%s,%s,%s,%s,%s,%s,%s) AS new_school
-        ON DUPLICATE KEY UPDATE grades=new_school.grades,rating_gs=new_school.rating_gs,updated_at=CURRENT_TIMESTAMP""",
+        VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
+        ON CONFLICT (name, city_id)
+        DO UPDATE SET
+            grades=EXCLUDED.grades,
+            rating_gs=EXCLUDED.rating_gs,
+            updated_at=NOW()
+        RETURNING id""",
         (name, str(school.get("grades") or "")[:19], str(school.get("type") or "")[:19],
          str(school.get("district") or "")[:149],
          int(school.get("rating_gs")) if school.get("rating_gs") is not None else None,
          str(school.get("rating_niche") or "")[:4],
          str(school.get("url") or "")[:499], city_id))
-    if cur.lastrowid and cur.lastrowid != 0:
-        return cur.lastrowid
-    cur.execute("SELECT id FROM schools WHERE name=%s AND city_id=%s", (name, city_id))
     r = cur.fetchone()
     return r["id"] if r else None
 
 
 def write_all(homes: list, scraped_at: datetime, stats: dict) -> dict:
-    """Write all homes to MySQL. Per-builder transactions. City from home['city']."""
+    """Write all homes to PostgreSQL. Per-builder transactions. City from home['city']."""
     t0 = datetime.now()
     summary = {"homes_written": 0, "prices_tracked": 0, "schools_written": 0,
                "communities_seen": 0, "errors": []}
@@ -176,10 +185,12 @@ def write_all(homes: list, scraped_at: datetime, stats: dict) -> dict:
                             try:
                                 sid = _upsert_school(cur, sch, cid)
                                 if sid:
-                                    cur.execute("INSERT INTO community_schools (community_id,school_id,distance,approximate) "
-                                                "VALUES(%s,%s,%s,%s) AS new_cs ON DUPLICATE KEY UPDATE distance=new_cs.distance",
+                                    cur.execute("""INSERT INTO community_schools (community_id,school_id,distance,approximate)
+                                                   VALUES(%s,%s,%s,%s)
+                                                   ON CONFLICT (community_id, school_id)
+                                                   DO UPDATE SET distance=EXCLUDED.distance""",
                                                 (community_id, sid, sch.get("distance", ""),
-                                                 int(bool(sch.get("approximate")))))
+                                                 bool(sch.get("approximate"))))
                                     summary["schools_written"] += 1
                             except Exception:
                                 pass
