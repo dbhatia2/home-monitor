@@ -74,6 +74,8 @@ def main():
 
     if "--now" in sys.argv:
         run_all()
+        log.info("One-time run complete. Exiting.")
+        return
 
     log.info("Waiting for next scheduled run...")
     while True:
