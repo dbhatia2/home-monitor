@@ -183,6 +183,18 @@ export interface SoldHome {
   community: string;
   city: string;
   state: string;
+  sold_price?: number;
+  sold_date?: string;
+  sold_price_source?: string;
+  sold_price_verified?: boolean;
+  // Additional ATTOM property data (captured during 30-day trial)
+  apn?: string;
+  sale_transaction_type?: string;
+  lot_size_acres?: number;
+  fips_code?: string;
+  sale_doc_number?: string;
+  attom_id?: number;
+  sale_recording_date?: string;
 }
 
 export interface SoldHomesResponse {

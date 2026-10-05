@@ -22,6 +22,9 @@ export async function GET(req: NextRequest) {
       SELECT
         h.id, h.address, h.plan_name, h.price, h.last_seen_at, h.updated_at,
         h.homesite, h.beds, h.baths, h.sqft,
+        h.sold_price, h.sold_date, h.sold_price_source, h.sold_price_verified,
+        h.apn, h.sale_transaction_type, h.lot_size_acres, h.fips_code,
+        h.sale_doc_number, h.attom_id, h.sale_recording_date,
         co.name AS community,
         ci.name AS city,
         ci.state
