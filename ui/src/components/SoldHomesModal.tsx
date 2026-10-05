@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SoldHomesResponse } from "@/lib/types";
-import { generateRedfinUrl } from "@/lib/redfin";
+import { getPrimaryPropertyUrl } from "@/lib/property-links";
 import { formatRelativeDate } from "@/lib/date-utils";
 
 interface Props {
@@ -142,10 +142,10 @@ export default function SoldHomesModal({
                 No sold homes found for "{planName}" in this community yet
               </p>
               <a
-                href={`https://www.redfin.com/`}
+                href={`https://www.zillow.com/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 <svg
                   className="w-4 h-4"
@@ -160,7 +160,7 @@ export default function SoldHomesModal({
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-                Search on Redfin
+                Search on Zillow
               </a>
             </div>
           )}
@@ -180,7 +180,7 @@ export default function SoldHomesModal({
               </p>
 
               {soldHomes.map((home) => {
-                const redfinUrl = generateRedfinUrl(
+                const propertyUrl = getPrimaryPropertyUrl(
                   home.address,
                   home.city,
                   home.state
@@ -194,7 +194,7 @@ export default function SoldHomesModal({
                   >
                     {/* Address */}
                     <a
-                      href={redfinUrl}
+                      href={propertyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-lg font-medium text-emerald-400 hover:text-emerald-300 transition-colors block mb-2"
@@ -219,12 +219,12 @@ export default function SoldHomesModal({
                       Last seen on builder site: {relativeDate || "Unknown"}
                     </p>
 
-                    {/* Redfin link button */}
+                    {/* Zillow link button */}
                     <a
-                      href={redfinUrl}
+                      href={propertyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
                     >
                       <svg
                         className="w-4 h-4"
@@ -239,7 +239,7 @@ export default function SoldHomesModal({
                           d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                         />
                       </svg>
-                      View on Redfin
+                      View on Zillow
                     </a>
                   </div>
                 );

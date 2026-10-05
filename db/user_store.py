@@ -24,7 +24,7 @@ def get_active_users(frequency: str = None) -> list:
                        up.alert_new_listings, up.alert_coming_soon
                 FROM users u
                 JOIN user_preferences up ON up.user_id = u.id
-                WHERE u.is_active = 1 {freq_filter}
+                WHERE u.is_active = true {freq_filter}
                 ORDER BY u.name
             """, params)
             users = cur.fetchall()
@@ -34,7 +34,7 @@ def get_active_users(frequency: str = None) -> list:
                 cur.execute("""
                     SELECT ci.name FROM user_cities uc
                     JOIN cities ci ON ci.id = uc.city_id
-                    WHERE uc.user_id = %s AND ci.active = 1
+                    WHERE uc.user_id = %s AND ci.active = true
                 """, (user["id"],))
                 user["cities"] = [r["name"] for r in cur.fetchall()]
 
