@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useTabContext } from "@/contexts/TabContext";
-import type { Home } from "@/lib/types";
+import type { Home, School } from "@/lib/types";
+import { formatRelativeDate } from "@/lib/date-utils";
+import { ScoreBadge, PriceDropTag, AttributeBadges, SchoolRatings } from "./home-card";
 import SoldHomesModal from "./SoldHomesModal";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -14,28 +16,24 @@ const STATUS_COLORS: Record<string, string> = {
   MODEL_HOME: "#8B5CF6",
 };
 
-export default function HomeCard({ home, rank }: { home: Home; rank?: number }) {
+export default function HomeCard({
+  home,
+  rank,
+  schools,
+  schoolsLoading,
+}: {
+  home: Home;
+  rank?: number;
+  schools?: School[];
+  schoolsLoading?: boolean;
+}) {
   const { activeTab, addHomeToGroup, removeHomeFromGroup, isHomeInTab } = useTabContext();
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [showSoldHomesModal, setShowSoldHomesModal] = useState(false);
 
-  const ppsf = home.sqft && home.price ? Math.round(home.price / home.sqft) : 0;
   const statusColor = STATUS_COLORS[home.status] || "#64748B";
   const statusLabel = home.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   const inTab = isHomeInTab(home.id);
-
-  const formatDate = (dateStr: string | null | undefined) => {
-    if (!dateStr) return null;
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
 
   const handleGroupToggle = (groupId: string, isInGroup: boolean) => {
     if (isInGroup) {
@@ -72,12 +70,15 @@ export default function HomeCard({ home, rank }: { home: Home; rank?: number }) 
             </span>
           )}
         </div>
-        <span
-          className="px-2.5 py-0.5 rounded-lg text-[11px] font-semibold"
-          style={{ backgroundColor: `${statusColor}22`, color: statusColor }}
-        >
-          {statusLabel}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className="px-2.5 py-0.5 rounded-lg text-[11px] font-semibold"
+            style={{ backgroundColor: `${statusColor}22`, color: statusColor }}
+          >
+            {statusLabel}
+          </span>
+          <ScoreBadge score={home.score} />
+        </div>
       </div>
 
       {/* Community + City + Link */}
@@ -100,37 +101,43 @@ export default function HomeCard({ home, rank }: { home: Home; rank?: number }) 
         )}
       </div>
 
-      {/* Price + Specs */}
-      <div className="flex items-end justify-between">
-        <div>
-          {home.price_drop === 1 && home.price_drop_amt > 0 ? (
-            <>
-              <p className="text-red-400 text-xl font-bold">${home.price.toLocaleString()}</p>
-              <p className="text-slate-500 dark:text-slate-600 text-sm line-through">
-                ${(home.prev_price || home.was_price || 0).toLocaleString()}
-              </p>
-              <p className="text-red-400 text-xs font-semibold">
-                -${home.price_drop_amt.toLocaleString()}
-              </p>
-            </>
-          ) : (
-            <p className="text-slate-800 dark:text-slate-200 text-xl font-bold">${home.price.toLocaleString()}</p>
-          )}
-          {ppsf > 0 && <p className="text-slate-500 dark:text-slate-600 text-xs mt-1">${ppsf}/sqft</p>}
-        </div>
-        <div className="text-right">
-          <p className="text-slate-700 dark:text-slate-300 text-sm">
-            {home.beds && `${home.beds} bed`}
-            {home.baths && ` · ${home.baths} bath`}
-          </p>
-          {home.sqft && home.sqft > 0 && (
-            <p className="text-slate-500 dark:text-slate-500 text-xs">{home.sqft.toLocaleString()} sqft</p>
-          )}
-        </div>
+      {/* Price + Price Drop Tag */}
+      <div>
+        {home.price_drop === 1 && home.price_drop_amt > 0 ? (
+          <>
+            <p className="text-red-400 text-xl font-bold">${home.price.toLocaleString()}</p>
+            <p className="text-slate-500 dark:text-slate-600 text-sm line-through">
+              ${(home.prev_price || home.was_price || 0).toLocaleString()}
+            </p>
+            <PriceDropTag
+              price={home.price}
+              priceDrop={home.price_drop}
+              priceDropAmt={home.price_drop_amt}
+              prevPrice={home.prev_price}
+              wasPrice={home.was_price}
+            />
+          </>
+        ) : (
+          <p className="text-slate-800 dark:text-slate-200 text-xl font-bold">${home.price.toLocaleString()}</p>
+        )}
+      </div>
+
+      {/* Attribute Badges */}
+      <div className="mt-2">
+        <AttributeBadges
+          beds={home.beds}
+          baths={home.baths}
+          sqft={home.sqft}
+          price={home.price}
+          is55Plus={home.is_55_plus}
+        />
       </div>
 
       {/* Address */}
       <p className="text-slate-500 dark:text-slate-600 text-xs mt-3 truncate">{home.address}</p>
+
+      {/* School Ratings */}
+      <SchoolRatings schools={schools} loading={schoolsLoading} />
 
       {/* Additional Details */}
       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-800 space-y-1">
@@ -146,7 +153,7 @@ export default function HomeCard({ home, rank }: { home: Home; rank?: number }) 
         )}
         {home.last_seen_at && (
           <p className="text-slate-600 dark:text-slate-700 text-[10px]">
-            <span className="text-slate-500 dark:text-slate-600">Last updated:</span> {formatDate(home.last_seen_at)}
+            <span className="text-slate-500 dark:text-slate-600">Last updated:</span> {formatRelativeDate(home.last_seen_at)}
           </p>
         )}
         {home.spotlight_features && Object.keys(home.spotlight_features).length > 0 && (

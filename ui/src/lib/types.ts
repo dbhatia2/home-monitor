@@ -197,6 +197,8 @@ export interface SoldHome {
   sale_recording_date?: string;
 }
 
+export type SchoolsByCommunity = Record<number, School[]>;
+
 export interface SoldHomesResponse {
   plan_name: string;
   total: number;

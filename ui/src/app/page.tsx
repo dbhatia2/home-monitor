@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import HomeCard from "@/components/HomeCard";
 import StatsBar from "@/components/StatsBar";
 import TabBar from "@/components/TabBar";
@@ -8,6 +8,7 @@ import BudgetBar from "@/components/BudgetBar";
 import GroupManager from "@/components/GroupManager";
 import ThemeToggle from "@/components/ThemeToggle";
 import AIAssistant from "@/components/AIAssistant";
+import { useSchoolsByCommunity } from "@/hooks/useSchoolsByCommunity";
 import type { Home, CityStats } from "@/lib/types";
 
 type SortKey = "price_drop" | "sqft" | "ppsf" | "price";
@@ -68,6 +69,12 @@ export default function Dashboard() {
 
   // Check if any filters are active
   const hasActiveFilters = selectedCity !== "all" || minBeds !== "" || addressSearch !== "";
+
+  const communityIds = useMemo(
+    () => [...new Set(homes.map((h) => h.community_id))],
+    [homes],
+  );
+  const { schools: schoolsMap, loading: schoolsLoading } = useSchoolsByCommunity(communityIds);
 
   const topDrops = homes
     .filter((h) => h.price_drop === 1 && h.price_drop_amt > 0)
@@ -199,7 +206,7 @@ export default function Dashboard() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {topDrops.map((h, i) => (
-                <HomeCard key={h.id} home={h} rank={i + 1} />
+                <HomeCard key={h.id} home={h} rank={i + 1} schools={schoolsMap[h.community_id]} schoolsLoading={schoolsLoading} />
               ))}
             </div>
           </section>
@@ -216,7 +223,7 @@ export default function Dashboard() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {topSqft.map((h, i) => (
-                <HomeCard key={h.id} home={h} rank={i + 1} />
+                <HomeCard key={h.id} home={h} rank={i + 1} schools={schoolsMap[h.community_id]} schoolsLoading={schoolsLoading} />
               ))}
             </div>
           </section>
@@ -232,7 +239,7 @@ export default function Dashboard() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {homes.map((h) => (
-              <HomeCard key={h.id} home={h} />
+              <HomeCard key={h.id} home={h} schools={schoolsMap[h.community_id]} schoolsLoading={schoolsLoading} />
             ))}
           </div>
           {homes.length === 0 && !loading && (
