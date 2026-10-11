@@ -22,6 +22,18 @@ export const GET = withApi(async (req: NextRequest) => {
     return json({ error: "Maximum 50 community_ids allowed" }, { status: 400 });
   }
 
+  // Check if the schools tables exist before querying
+  const { rows: tableCheck } = await pool.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'community_schools'
+     ) AS exists`,
+  );
+
+  if (!tableCheck[0]?.exists) {
+    return json({});
+  }
+
   const { rows } = await pool.query(
     `SELECT s.name, s.grades, s.type, s.district, s.rating_gs,
             s.rating_niche, s.url, cs.distance, cs.approximate,
@@ -37,7 +49,6 @@ export const GET = withApi(async (req: NextRequest) => {
   for (const row of rows) {
     const cid = row.community_id;
     if (!grouped[cid]) grouped[cid] = [];
-    // Remove community_id from individual school objects
     const { community_id: _cid, ...school } = row;
     grouped[cid].push(school);
   }
